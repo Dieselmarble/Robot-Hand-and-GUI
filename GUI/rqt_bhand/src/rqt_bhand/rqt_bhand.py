@@ -21,11 +21,8 @@ from rospy.exceptions import ROSException
 
 
 #angles
-max_finger_spread = 3600
-
-MAX_VELOCITY = 1000 # rad/s
+MAX_VELOCITY = 1000 # max is 1023 this is for security
 MAX_TORQUE = 1000
-
 class BHandGUI(Plugin):
 
         def __init__(self, context):
@@ -65,14 +62,12 @@ class BHandGUI(Plugin):
 		self.max_torque = MAX_TORQUE
 		self.vel_factor = self.max_vel/100.0 # For the slider
   		self.eff_factor = self.max_torque/99
+		self.finger_factor = 1
 		self.red_string = "background-color: rgb(255,0,0)"
 		self.orange_string = "background-color: rgb(255,128,0)"
 		self.yellow_string = "background-color: rgb(255,255,0)"
 		self.green_string = "background-color: rgb(128,255,0)"
 		self.black_string = "background-color: rgb(0,0,0)"
-
-        	self.finger_factor = max_finger_spread/99
-
 		self.state_string = " "
 
 
@@ -149,6 +144,10 @@ class BHandGUI(Plugin):
 			self._service_start = rospy.ServiceProxy('/start_controller', StartController)
 		except ValueError, e:
 			rospy.logerr('BHandGUI: Error connecting service (%s)'%e)
+		try:
+			self._service_enable = rospy.ServiceProxy('/Torque_enable', TorqueEnable)
+		except ValueError, e:
+			rospy.logerr('BHandGUI: Error connecting service (%s)'%e)
 
 
 		''' fixed fingers'''
@@ -163,14 +162,16 @@ class BHandGUI(Plugin):
 		self._widget.pushButton_squeeze.clicked.connect(self.squeeze_button_pressed)
 		self._widget.pushButton_point.clicked.connect(self.point_button_pressed)
 		self._widget.pushButton_disable.clicked.connect(self.disable_button_pressed)
-
+		self._widget.pushButton_enable.clicked.connect(self.enable_button_pressed)
 		self._widget.horizontalSlider_3.valueChanged.connect(self.slider__changed)
 		self._widget.horizontalSlider_2.valueChanged.connect(self.slider_2_changed)
 		self._widget.horizontalSlider_1.valueChanged.connect(self.slider_1_changed)
-
                 self._widget.horizontalSlider_v_f1.valueChanged.connect(self.slider_v_f1_changed)
 		self._widget.horizontalSlider_v_f2.valueChanged.connect(self.slider_v_f2_changed)
 		self._widget.horizontalSlider_v_f3.valueChanged.connect(self.slider_v_f3_changed)
+		self._widget.horizontalSlider_4.valueChanged.connect(self.horizontalSlider_4_changed)
+		self._widget.horizontalSlider_5.valueChanged.connect(self.horizontalSlider_5_changed)
+		self._widget.horizontalSlider_6.valueChanged.connect(self.horizontalSlider_6_changed)			
 		self._init_timers()
 
         def read_ros_params(self):
@@ -215,17 +216,23 @@ class BHandGUI(Plugin):
 		'''
 			Handles the press button event to call initialization service
 		'''
-	def disable_button_pressed(self):
+	def disable_button_pressed(self):	
+		rospy.wait_for_service('add_two_ints')
 		try:
-			self_service_disable()
+			self.service_enable()
+			resp1=service_enable(True)
+			return resp1
 		except ValueError, e:
 			rospy.logerr('BHandGUI::torque_disable: (%s)'%e)
 		except rospy.ServiceException, e:
 			rospy.logerr('BHandGUI::torque_disable: (%s)'%e)
 			QMessageBox.warning(self._widget, "Warning", "Servicio no disponible")
 	def enable_button_pressed(self):
+		rospy.wait_for_service('add_two_ints')
 		try:
-			self_service_disable()
+			self.service_enable()
+			resp1=service_enable(True)
+			return resp1
 		except ValueError, e:
 			rospy.logerr('BHandGUI::torque_enable: (%s)'%e)
 		except rospy.ServiceException, e:
@@ -259,7 +266,7 @@ class BHandGUI(Plugin):
 			QMessageBox.warning(self._widget, "Warning", "Servicio no disponible")
 
 	def slider_2_changed(self):
-		self.finger2_spread = self._widget.horizontalSlider_2.value() * self.finger_factor
+		self.finger2_spread = 6200 - self._widget.horizontalSlider_2.value() * self.finger_factor
 		#if self.fixed_fingers == 1:
 		if self._widget.checkBox_position.isChecked():
 			self.finger1_spread = self.finger3_spread = self.finger2_spread
@@ -268,7 +275,7 @@ class BHandGUI(Plugin):
 		self.send_position_command()
 
 	def slider__changed(self):
-		self.finger3_spread = self._widget.horizontalSlider_3.value() * self.finger_factor
+		self.finger3_spread = 5400 - self._widget.horizontalSlider_3.value() * self.finger_factor
 		#if self.fixed_fingers == 1:
 		if self._widget.checkBox_position.isChecked():
 			self.finger1_spread = self.finger2_spread = self.finger3_spread
@@ -277,7 +284,7 @@ class BHandGUI(Plugin):
 		self.send_position_command()
 
 	def slider_1_changed(self):
-		self.finger1_spread = self._widget.horizontalSlider_1.value() * self.finger_factor
+		self.finger1_spread = 5400 - self._widget.horizontalSlider_1.value() * self.finger_factor
 		#if self.fixed_fingers == 1:
 		if self._widget.checkBox_position.isChecked():
 			self.finger3_spread = self.finger2_spread = self.finger1_spread
@@ -328,20 +335,6 @@ class BHandGUI(Plugin):
 		self.finger3_eff = self._widget.horizontalSlider_6.value() * self.eff_factor	
 		self.send_effort_command()
 
-	def send_position_command(self):
-		'''
-			Sends a command in position mode
-		'''
-		self.desired_ref.header.stamp = rospy.Time.now()
-		self.desired_ref.header.frame_id='DMT_hand'
-		self.desired_ref.name = [self.joint_state_pointer[0]['joint'], self.joint_state_pointer[1]['joint'], self.joint_state_pointer[2]['joint']]
-		self.desired_ref.position = [self.finger1_spread, self.finger2_spread, self.finger3_spread]
-		self.desired_ref.velocity = [0.0, 0.0, 0.0]
-		self.desired_ref.effort = [0.0, 0.0, 0.0]
-
-                '''Publish Position Command'''
-		self._publisher_command.publish(self.desired_ref)
-
 	# Handles the messages from the agvs controller
 
 	def _receive_joints_data(self,msg):
@@ -377,6 +370,19 @@ class BHandGUI(Plugin):
 		'''
 		self.set_control_mode('VELOCITY')
 		self._timer_commands.start(dynamixel_VELOCITY_COMMANDS_FREQ)
+	def send_position_command(self):
+		'''
+			Sends a command in position mode
+		'''
+		self.desired_ref.header.stamp = rospy.Time.now()
+		self.desired_ref.header.frame_id='DMT_hand'
+		self.desired_ref.name = [self.joint_state_pointer[0]['joint'], self.joint_state_pointer[1]['joint'], self.joint_state_pointer[2]['joint']]
+		self.desired_ref.position = [self.finger1_spread, self.finger2_spread, self.finger3_spread]
+		self.desired_ref.velocity = [self.finger1_spread_vel, self.finger2_spread_vel, self.finger3_spread_vel]
+		self.desired_ref.effort = [0.0, 0.0, 0.0]
+
+                '''Publish Position Command'''
+		self._publisher_command.publish(self.desired_ref)
 
 	def send_velocity_command(self):
 		'''
@@ -385,18 +391,18 @@ class BHandGUI(Plugin):
 		self.desired_ref.header.stamp = rospy.Time.now()
 		self.desired_ref.header.frame_id='DMT_hand'
 		self.desired_ref.name = [self.joint_state_pointer[0]['joint'], self.joint_state_pointer[1]['joint'], self.joint_state_pointer[2]['joint']]
-		self.desired_ref.position = [0, 0, 0]
+		self.desired_ref.position = [self.finger1_spread, self.finger2_spread, self.finger3_spread]
 		self.desired_ref.velocity = [self.finger1_spread_vel, self.finger2_spread_vel, self.finger3_spread_vel]
 		self.desired_ref.effort = [0.0, 0.0, 0.0]
 		self._publisher_command.publish(self.desired_ref)
 
-	def send_effort_command():
+	def send_effort_command(self):
 		self.desired_ref.header.stamp = rospy.Time.now()
 		self.desired_ref.header.frame_id='DMT_hand'
 		self.desired_ref.name = [self.joint_state_pointer[0]['joint'], self.joint_state_pointer[1]['joint'], self.joint_state_pointer[2]['joint']]
-		self.desired_ref.position = [0, 0, 0]
+		self.desired_ref.position = [self.finger1_spread, self.finger2_spread, self.finger3_spread]
 		self.desired_ref.velocity = [0, 0, 0]
-		self.desired_ref.effort = [self.finger1_eff, self.finger2_eff, self.finger2_eff]
+		self.desired_ref.effort = [self.finger1_eff, self.finger2_eff, self.finger3_eff]
 		self._publisher_command.publish(self.desired_ref)
 	
 	def timeout_command_timer(self):
