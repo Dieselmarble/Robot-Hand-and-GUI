@@ -262,11 +262,12 @@ class BHandGUI(Plugin):
 		except ValueError, e:
 			rospy.logerr('BHandGUI::send_action: (%s)'%e)
 		except rospy.ServiceException, e:
-			rospy.logerr('BHandGUI::send_action: (%s)'%e)
-			QMessageBox.warning(self._widget, "Warning", "Servicio no disponible")
+			#rospy.logerr('BHandGUI::send_action: (%s)'%e)
+			pass
+			#QMessageBox.warning(self._widget, "Warning", "Servicio no disponible")
 
 	def slider_2_changed(self):
-		self.finger2_spread = 6200 - self._widget.horizontalSlider_2.value() * self.finger_factor
+		self.finger2_spread = self._widget.horizontalSlider_2.value() * self.finger_factor
 		#if self.fixed_fingers == 1:
 		if self._widget.checkBox_position.isChecked():
 			self.finger1_spread = self.finger3_spread = self.finger2_spread
@@ -275,7 +276,7 @@ class BHandGUI(Plugin):
 		self.send_position_command()
 
 	def slider__changed(self):
-		self.finger3_spread = 5400 - self._widget.horizontalSlider_3.value() * self.finger_factor
+		self.finger3_spread = 6400 - self._widget.horizontalSlider_3.value() * self.finger_factor
 		#if self.fixed_fingers == 1:
 		if self._widget.checkBox_position.isChecked():
 			self.finger1_spread = self.finger2_spread = self.finger3_spread
@@ -413,9 +414,9 @@ class BHandGUI(Plugin):
 
 
 	def stop(self):
-		self._widget.horizontalSlider_v_f1.setValue(0)
-		self._widget.horizontalSlider_v_f2.setValue(0)
-		self._widget.horizontalSlider_v_f3.setValue(0)
+		self._widget.horizontalSlider_v_f1.setValue(3400)
+		self._widget.horizontalSlider_v_f2.setValue(2500)
+		self._widget.horizontalSlider_v_f3.setValue(4400)
 
 
 	def shutdown_plugin(self):

@@ -11,9 +11,8 @@ import time
 from dynamixel_driver.dynamixel_serial_proxy import SerialProxy
 from dynamixel_driver.dynamixel_io import DynamixelIO
 from dynamixel_msgs.msg import CustomHand
-from diagnostic_msgs.msg import DiagnosticArray
-from diagnostic_msgs.msg import DiagnosticStatus
-from diagnostic_msgs.msg import KeyValue
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
+from dynamixel_msgs.msg import Service 
 from sensor_msgs.msg import JointState
 from dynamixel_controllers.srv import StartController, StartControllerResponse, StopController, StopControllerResponse
 from dynamixel_controllers.srv import RestartController, RestartControllerResponse
@@ -248,15 +247,18 @@ class ControllerManager:
 			DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_speed(2, self.speed)
 		if self.joint_state.name[i]=='joint_3':
 			self.speed = int(self.joint_state.velocity[i])
-			DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(3, self.speed)
+			DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_speed(3, self.speed)
     def torque_control(self):
-	#self.joint_state.effort=[0, 0, 0]
-	self.torque_1=int(self.joint_state.effort[0])
-        self.torque_2=int(self.joint_state.effort[1])
-        self.torque_3=int(self.joint_state.effort[2])  
-	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_goal_torque(1, self.torque_1)
-	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_goal_torque(2, self.torque_2)	
-	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_goal_torque(3, self.torque_3)		
+	for i in range(len(self.joint_state.name)):
+		if self.joint_state.name[i]=='joint_1':
+			self.torque = int(self.joint_state.velocity[i])
+			DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_goal_torque(1, self.torque)
+		if self.joint_state.name[i]=='joint_2':			
+			self.torque = int(self.joint_state.velocity[i])
+			DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_goal_torque(2, self.torque)
+		if self.joint_state.name[i]=='joint_3':
+			self.torque = int(self.joint_state.velocity[i])
+			DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_goal_torque(3, self.torque)
     def torque_enable(self, req):
 	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_torque_enabled(1, req)
 
@@ -303,29 +305,44 @@ class ControllerManager:
                 pass
             self.diagnostics_pub.publish(self.status)
             rate.sleep()
-    def handActions():
-	if action == Service.CLOSE_GRASP:
-	   self.grab()
-	elif action == Service.OPEN_GRASP:
-           self.open_hand()
-	elif action == Service.POINT_GRASP:
-           self.point()
-        elif action == Service.SQUEEZE_GRASP:
-           self.squeeze()
 
-    def predefined_position():
-	DynamixelIO().set_position(self, 1, position)
-        DynamixelIO().set_position(self, 2, position)
-        DynamixelIO().set_position(self, 3, position)
-    #pre-defined actions
-    def grab():
-	self.predefined_position()
-    def open_hand():
-	self.predefined_position()
-    def point():
-       self.predefined_position()
-    def squeeze():
-	self.predefined_position()
+    def handActions(self, req):
+	if req.action == Service.GRAB_GRASP:
+		try: 	self.grab()
+           	      	
+		except rospy.exceptions: return False
+	if req.action == Service.OPEN_GRASP:
+        	try: 	self.open_hand()	
+			
+		except rospy.exceptions: return False
+	if req.action == Service.POINT_GRASP:
+           	try:	self.point()
+			
+		except rospy.exceptions: return False
+        if req.action == Service.SQUEEZE_GRASP:
+		try:    self.squeeze()
+			
+		except rospy.exceptions: return False
+    def grab(self):
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(1, 2000)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(2, 4000)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(3, 1800)
+	return True
+    def open_hand(self):
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(1, 4000)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(2, 2300)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(3, 4000)
+	return True
+    def point(self):
+        DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(1, 4000)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(2, 2300)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(3, 3100)
+	return True
+    def squeeze(self):
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(1, 1100)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(2, 4000)
+	DynamixelIO('/dev/ttyACM0',57600,readback_echo=False).set_position(3, 1100)
+	return True
 
 if __name__ == '__main__':
     try:
