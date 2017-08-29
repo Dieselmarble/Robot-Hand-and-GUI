@@ -3,6 +3,7 @@ from __future__ import division
 import os
 import rospkg
 import time
+import threading
 import math
 import rospy
 from python_qt_binding import loadUi
@@ -18,10 +19,18 @@ from bhand_controller.srv import Actions, TorqueEnable
 from bhand_controller.msg import Service, CustomHand, MotorState, MotorStateList
 from sensor_msgs.msg import JointState
 from rospy.exceptions import ROSException
+import serial
+#serial port for sybergove and arduino
+ser=serial.Serial("/dev/ttyUSB0", baudrate=9600, timeout=1)
 
 MAX_VELOCITY = 200 # max is 1023 this is for security
 MAX_TORQUE = 1000
+#event used to communicate between threads
+event = threading.Event()
+
 class BHandGUI(Plugin):
+	global dead
+        dead=False
         def __init__(self, context):
 		super(BHandGUI, self).__init__(context)
 		self.setObjectName('BHandGUI')
@@ -38,6 +47,12 @@ class BHandGUI(Plugin):
 		self.finger1_spread = 0.0
 		self.finger2_spread = 0.0
 		self.finger3_spread = 0.0
+		self.finger3_spread_temp = 0.0
+		self.finger3_spread_temp = 0.0
+		self.finger3_spread_temp = 0.0
+		self.save_1 = 0.0
+		self.save_2 = 0.0
+		self.save_3 = 0.0
 		# DESIRED VELOCITY
 		self.finger1_spread_vel = 0.0
 		self.finger2_spread_vel = 0.0
@@ -50,6 +65,8 @@ class BHandGUI(Plugin):
 		self.vel_factor = self.max_vel/100.0 # For the slider
   		self.eff_factor = self.max_torque/99
 		self.finger_factor = 1
+		self.datalist = [0,0,0]
+		self.temp_1=self.temp_2=self.temp_3=0
 		self.red_string = "background-color: rgb(255,0,0)"
 		self.orange_string = "background-color: rgb(255,128,0)"
 		self.yellow_string = "background-color: rgb(255,255,0)"
@@ -114,6 +131,7 @@ class BHandGUI(Plugin):
 		# HANDLERS
 		# Adds handlers to 'press button' event
 		self._widget.pushButton_stop.clicked.connect(self.stop)
+		self._widget.pushButton_glove.clicked.connect(self.cyberglove)
 		self._widget.pushButton_grab.clicked.connect(self.grab_button_pressed)
 		self._widget.pushButton_open.clicked.connect(self.open_button_pressed)
 		self._widget.pushButton_squeeze.clicked.connect(self.squeeze_button_pressed)
@@ -157,7 +175,56 @@ class BHandGUI(Plugin):
 		self._timer = QBasicTimer()
 		self._timer.start(1, self)
 		self._timer_commands = QTimer()
+	def getvalues(self):
+		ser.write(b'y')
+		arduinoData = format(ser.readline().strip())
+		if arduinoData.isdigit():
+			return float(arduinoData)
+		else:
+			return 0
+	def cyberglove(self):
+		try:
+			event.set()
+			thread = threading.Thread(target=self.cyber_control, args=())
+			thread.start() 
+		except:
+   			QMessageBox.warning(self._widget, "Warning", "Servicio no disponible")
+	def cyber_control(self):
+		#wait for cyber glove to initialize		
+		time.sleep(0.5)
+		for i in range (0,3):	
+				self.data = self.getvalues()	
+				self.datalist[i]=self.data
+		self.temp_1 = self.datalist[0]
+		self.temp_2 = self.datalist[1]
+		self.temp_3 = self.datalist[2]		
+		while event.is_set():	
+			for i in range (0,3):	
+				self.data = self.getvalues()	
+				self.datalist[i]=self.data
+			self.finger1_spread_temp = (self.datalist[0] - self.temp_1)/150*1400
+			self.finger1_spread = int(3400 - self.finger1_spread_temp)			
+			self.finger2_spread_temp = 2500 + (self.datalist[1] - self.temp_2)/200*1500
+			self.finger2_spread = int(self.finger2_spread_temp)
+			self.finger3_spread_temp = int(self.datalist[2] - self.temp_3)/60*1400
+			self.finger3_spread = int(2200-self.finger3_spread_temp)
+			self.filt_data()			
+			self.save_data()
 
+	def save_data(self):
+		self.save_1 = self.finger1_spread
+		self.save_2 = self.finger2_spread
+		self.save_3 = self.finger3_spread
+	
+	def filt_data(self):
+		if abs(self.finger1_spread - self.save_1) < 150:
+			self.finger1_spread = self.save_1
+		if abs(self.finger2_spread - self.save_2) < 150:
+			self.finger2_spread = self.save_2
+		if abs(self.finger3_spread - self.save_3) < 150:
+			self.finger3_spread = self.save_3 
+		self.send_command()
+			
 	def disable_button_pressed(self):
 		try:
 			self._service_disable(False)	
@@ -311,7 +378,13 @@ class BHandGUI(Plugin):
 		self._widget.horizontalSlider_v_f1.setValue(0)
 		self._widget.horizontalSlider_v_f2.setValue(0)
 		self._widget.horizontalSlider_v_f3.setValue(0)
+		thread_2 = threading.Thread(target=self.flag, args=())
+		thread_2.start()
 
+	def flag(self):
+		time.sleep(1)
+		event.clear()
+	
 	def shutdown_plugin(self):
 		self._timer_commands.stop()
 		self._timer.stop()

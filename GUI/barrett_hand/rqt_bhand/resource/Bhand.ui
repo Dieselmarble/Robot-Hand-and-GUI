@@ -94,6 +94,32 @@
      <string>Stop</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="pushButton_glove">
+    <property name="geometry">
+     <rect>
+      <x>310</x>
+      <y>90</y>
+      <width>111</width>
+      <height>50</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>CyberGlove</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_disable">
+    <property name="geometry">
+     <rect>
+      <x>160</x>
+      <y>90</y>
+      <width>111</width>
+      <height>50</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Disable</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QTabWidget" name="tabWidgetControlMode">
    <property name="geometry">
@@ -105,7 +131,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>1</number>
+    <number>0</number>
    </property>
    <widget class="QWidget" name="tab_2">
     <attribute name="title">
@@ -616,19 +642,6 @@
      </property>
      <property name="readOnly">
       <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="pushButton_disable">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>111</width>
-       <height>50</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Disable</string>
      </property>
     </widget>
    </widget>
