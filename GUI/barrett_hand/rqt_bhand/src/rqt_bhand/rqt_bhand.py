@@ -19,7 +19,7 @@ from bhand_controller.msg import Service, CustomHand, MotorState, MotorStateList
 from sensor_msgs.msg import JointState
 from rospy.exceptions import ROSException
 
-MAX_VELOCITY = 1000 # max is 1023 this is for security
+MAX_VELOCITY = 200 # max is 1023 this is for security
 MAX_TORQUE = 1000
 class BHandGUI(Plugin):
         def __init__(self, context):
