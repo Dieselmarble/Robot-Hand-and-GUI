@@ -1,7 +1,0 @@
-# constants
-int32 INIT_HAND = 1
-int32 GRAB_GRASP = 2
-int32 OPEN_GRASP = 3
-int32 SQUEEZE_GRASP = 4
-int32 POINT_GRASP = 5
-
