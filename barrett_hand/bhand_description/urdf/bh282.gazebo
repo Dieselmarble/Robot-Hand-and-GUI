@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+	<xacro:macro name="bh_gazebo" params="name">
+		<!-- ros_control plugin -->
+		<!--gazebo>
+			<plugin name="ros_control" filename="libgazebo_ros_control.so">
+			   <robotNamespace>/${name}</robotNamespace>
+			   <controlPeriod>0.001</controlPeriod>
+			   <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+			</plugin>
+		</gazebo-->
+
+		<gazebo reference="${name}_base_link">
+			<material>Gazebo/White</material>
+			<turnGravityOff>false</turnGravityOff>
+		</gazebo>
+
+		<gazebo reference="${name}_finger_3_link">
+			<material>Gazebo/Grey</material>
+			<turnGravityOff>false</turnGravityOff>
+		</gazebo>
+
+		<gazebo reference="${name}_finger_1_link">
+			<material>Gazebo/Grey</material>
+			<turnGravityOff>false</turnGravityOff>
+		</gazebo>
+
+		<gazebo reference="${name}_finger_2_link">
+			<material>Gazebo/Grey</material>
+			<turnGravityOff>false</turnGravityOff>
+		</gazebo>
+
+
+	</xacro:macro>
+</robot>
